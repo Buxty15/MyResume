@@ -1,0 +1,43 @@
+.my_special_color {
+color:blue !important;
+}
+
+.my_background_color{
+    background-color: rgb(117, 143, 117);
+}
+
+.my_serif_text{
+    font-family:serif;
+}
+
+.my_text_alignment{
+    text-align: center;
+}
+
+.my_text_size{
+    font-size: larger;
+}
+
+.title {
+    background-color: beige;
+    padding: 20px;
+    text-align: center;
+    border-bottom: 4px solid #00bcd4;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+
+.title1 {
+    background-color: beige;
+    padding: 20px;
+    text-align: center;
+    border-bottom: 4px solid #d400a6;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+
+.title2 {
+    background-color: beige;
+    padding: 20px;
+    text-align: center;
+    border-bottom: 4px solid #261055;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}

@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NBA Team Selector Wheel</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #e0f7fa; /* Light cyan/blue */
+            color: #004d40; /* Dark teal text */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow-x: hidden; /* Prevent horizontal scrollbar if text gets wide */
+        }
+
+        h1 {
+            color: #00796b; /* Teal */
+            margin-bottom: 20px;
+        }
+
+        .wheel-container {
+            position: relative;
+            width: 450px;
+            height: 450px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        #wheelCanvas {
+            display: block;
+            max-width: 100%;
+            max-height: 100%;
+            transition: transform 5s cubic-bezier(0.1, 0.7, 0.3, 1); /* Ease-out effect */
+            border-radius: 50%; /* Ensure canvas itself is visually round */
+            box-shadow: 0 0 15px rgba(0, 77, 64, 0.3); /* Subtle shadow */
+        }
+
+        .pointer {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -100%); /* Center horizontally, place above center */
+            width: 0;
+            height: 0;
+            border-left: 20px solid transparent;
+            border-right: 20px solid transparent;
+            border-top: 30px solid #ff5722; /* Bright pointer color */
+            z-index: 10;
+            margin-top: -15px; /* Adjusted position slightly higher */
+            filter: drop-shadow(0px -2px 2px rgba(0,0,0,0.3)); /* Shadow for pointer */
+        }
+
+        #spinButton {
+            padding: 15px 30px;
+            font-size: 1.2em;
+            font-weight: bold;
+            color: white;
+            background-color: #00796b; /* Teal */
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.1s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        #spinButton:hover {
+            background-color: #004d40; /* Darker teal */
+        }
+
+        #spinButton:active {
+            transform: scale(0.98);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        #spinButton:disabled {
+            background-color: #b2dfdb; /* Lighter teal when disabled */
+            cursor: not-allowed;
+        }
+
+        /* --- Result Area Styling --- */
+        #result {
+            margin-top: 20px;
+            text-align: center;
+            min-height: 120px; /* Increased height */
+            width: 90%;
+            max-width: 500px;
+            background-color: #ffffff;
+            padding: 20px; /* Increased padding */
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.5s ease; /* Smooth bg color change */
+        }
+
+        #initialMessage {
+             font-size: 1.5em;
+             font-weight: bold;
+             color: #004d40;
+        }
+
+        #selectedTeamName {
+            font-size: 2.8em; /* Larger font size */
+            font-weight: bold;
+            color: #004d40;
+            margin: 5px 0 15px 0; /* Adjusted margin */
+            display: none; /* Initially hidden */
+            line-height: 1.1;
+        }
+
+        #statsLink {
+            display: none; /* Initially hidden */
+            font-size: 1.1em;
+            color: #00796b; /* Teal link color */
+            text-decoration: none;
+            border: 1px solid #00796b;
+            padding: 8px 15px;
+            border-radius: 5px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        #statsLink:hover {
+            background-color: #00796b;
+            color: white;
+            text-decoration: none;
+        }
+        /* --- End Result Area Styling --- */
+
+    </style>
+</head>
+<body>
+
+    <h1>NBA Team Randomizer</h1>
+
+    <div class="wheel-container">
+        <div class="pointer"></div>
+        <canvas id="wheelCanvas" width="400" height="400"></canvas>
+    </div>
+
+    <button id="spinButton">Spin the Wheel!</button>
+
+    <div id="result">
+        <span id="initialMessage">Spin to see the winner!</span>
+         <h2 id="selectedTeamName" style="display: none;"></h2>
+         <a id="statsLink" href="#" target="_blank" style="display: none;">View Season Stats</a>
+    </div>
+
+    <script>
+        const teams = [
+            "Atlanta Hawks", "Boston Celtics", "Brooklyn Nets", "Charlotte Hornets",
+            "Chicago Bulls", "Cleveland Cavaliers", "Dallas Mavericks", "Denver Nuggets",
+            "Detroit Pistons", "Golden State Warriors", "Houston Rockets", "Indiana Pacers",
+            "Los Angeles Clippers", "Los Angeles Lakers", "Memphis Grizzlies", "Miami Heat",
+            "Milwaukee Bucks", "Minnesota Timberwolves", "New Orleans Pelicans", "New York Knicks",
+            "Oklahoma City Thunder", "Orlando Magic", "Philadelphia 76ers", "Phoenix Suns",
+            "Portland Trail Blazers", "Sacramento Kings", "San Antonio Spurs", "Toronto Raptors",
+            "Utah Jazz", "Washington Wizards"
+        ];
+
+        // Map team names to Basketball-Reference abbreviations
+        const teamAbbrMap = {
+            "Atlanta Hawks": "ATL", "Boston Celtics": "BOS", "Brooklyn Nets": "BRK",
+            "Charlotte Hornets": "CHO", "Chicago Bulls": "CHI", "Cleveland Cavaliers": "CLE",
+            "Dallas Mavericks": "DAL", "Denver Nuggets": "DEN", "Detroit Pistons": "DET",
+            "Golden State Warriors": "GSW", "Houston Rockets": "HOU", "Indiana Pacers": "IND",
+            "Los Angeles Clippers": "LAC", "Los Angeles Lakers": "LAL", "Memphis Grizzlies": "MEM",
+            "Miami Heat": "MIA", "Milwaukee Bucks": "MIL", "Minnesota Timberwolves": "MIN",
+            "New Orleans Pelicans": "NOP", "New York Knicks": "NYK", "Oklahoma City Thunder": "OKC",
+            "Orlando Magic": "ORL", "Philadelphia 76ers": "PHI", "Phoenix Suns": "PHX",
+            "Portland Trail Blazers": "POR", "Sacramento Kings": "SAC", "San Antonio Spurs": "SAS",
+            "Toronto Raptors": "TOR", "Utah Jazz": "UTA", "Washington Wizards": "WAS"
+        };
+
+        const canvas = document.getElementById('wheelCanvas');
+        const ctx = canvas.getContext('2d');
+        const spinButton = document.getElementById('spinButton');
+        const resultDiv = document.getElementById('result');
+        const initialMessage = document.getElementById('initialMessage');
+        const selectedTeamNameDiv = document.getElementById('selectedTeamName');
+        const statsLink = document.getElementById('statsLink');
+
+
+        const numSegments = teams.length;
+        const arcSize = (2 * Math.PI) / numSegments;
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const radius = canvas.width / 2 - 10; // Slightly smaller radius for padding
+
+        const colors = [ // Using slightly softer blues/teals
+            "#b2ebf2", "#80deea", "#4dd0e1", "#26c6da", "#00bcd4", "#00acc1", "#0097a7", "#00838f"
+        ];
+
+        let currentAngle = 0;
+        let isSpinning = false;
+
+        function drawSegment(index, startAngle, endAngle) {
+            const team = teams[index];
+            const color = colors[index % colors.length];
+
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+            ctx.closePath();
+
+            ctx.fillStyle = color;
+            ctx.fill();
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Draw text
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.rotate(startAngle + arcSize / 2);
+            ctx.textAlign = "right";
+            ctx.fillStyle = "#004d40";
+            ctx.font = "bold 11px 'Segoe UI', sans-serif"; // Slightly smaller for better fit
+            ctx.textBaseline = "middle"; // Center text vertically
+             // Adjust text position based on radius, move slightly inwards
+            ctx.fillText(team, radius - 15, 0);
+            ctx.restore();
+        }
+
+        function drawWheel() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.font = "10px sans-serif";
+
+            for (let i = 0; i < numSegments; i++) {
+                const startAngle = i * arcSize;
+                const endAngle = (i + 1) * arcSize;
+                drawSegment(i, startAngle, endAngle);
+            }
+        }
+
+         // --- Determine Current Season Year for Stats Link ---
+         // NBA season spans two calendar years (e.g., 2024-2025).
+         // Basketball-Reference uses the *ending* year for the season URL.
+         // Example: The 2024-2025 season stats are at /teams/XXX/2025.html
+         function getSeasonEndYear() {
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const currentMonth = now.getMonth(); // 0=Jan, 9=Oct, 11=Dec
+
+            // If it's October or later, the season ending next year has started.
+            // If it's before October, we are referring to the season ending this year.
+            // Note: Today is April 15, 2025, so the current season ending year is 2025.
+            return (currentMonth >= 9) ? currentYear + 1 : currentYear;
+         }
+         // --- End Season Year Logic ---
+
+
+        function spinWheel() {
+            if (isSpinning) return;
+
+            isSpinning = true;
+            spinButton.disabled = true;
+            resultDiv.style.backgroundColor = "#fffde7"; // Light yellow during spin
+            initialMessage.style.display = 'block'; // Show initial message
+            initialMessage.textContent = "Spinning...";
+            selectedTeamNameDiv.style.display = 'none'; // Hide previous results
+            statsLink.style.display = 'none';      // Hide previous results
+
+            // Calculate random spin angle
+            const randomSpin = Math.random() * 360;
+            const totalRotations = 5 * 360;
+            const targetAngleDegrees = totalRotations + randomSpin;
+
+            const currentRotationDegrees = (parseFloat(canvas.style.transform.replace(/[^0-9.-]/g, '')) || 0);
+            const finalRotationDegrees = currentRotationDegrees + targetAngleDegrees;
+
+            canvas.style.transition = 'transform 5s cubic-bezier(0.25, 0.1, 0.25, 1)';
+            canvas.style.transform = `rotate(${finalRotationDegrees}deg)`;
+
+            canvas.addEventListener('transitionend', handleSpinEnd, { once: true });
+        }
+
+        function handleSpinEnd() {
+             // Get the final computed rotation angle
+            const computedStyle = window.getComputedStyle(canvas);
+            const matrix = new DOMMatrix(computedStyle.transform);
+            const finalAngleRad = Math.atan2(matrix.b, matrix.a);
+
+             // Normalize the angle
+            let normalizedAngle = finalAngleRad % (2 * Math.PI);
+            if (normalizedAngle < 0) {
+                normalizedAngle += (2 * Math.PI);
+            }
+
+             // Calculate winning segment based on pointer at the top (3*PI/2)
+            const pointerAngleOffset = 3 * Math.PI / 2; // Angle where the pointer is
+            let rawWinningIndex = Math.floor(numSegments - (normalizedAngle / arcSize) - (pointerAngleOffset / (2 * Math.PI)) * numSegments);
+            const winningSegmentIndex = (rawWinningIndex % numSegments + numSegments) % numSegments;
+
+
+            // --- Display Result ---
+            const winningTeam = teams[winningSegmentIndex];
+            const teamAbbr = teamAbbrMap[winningTeam];
+            const seasonYear = getSeasonEndYear(); // Get the correct season year
+
+            initialMessage.style.display = 'none'; // Hide "Spinning..."
+
+            selectedTeamNameDiv.textContent = winningTeam;
+            selectedTeamNameDiv.style.display = 'block'; // Show the team name
+
+            if (teamAbbr && seasonYear) {
+                const statsUrl = `https://www.basketball-reference.com/teams/${teamAbbr}/${seasonYear}.html`;
+                statsLink.href = statsUrl;
+                statsLink.textContent = `View ${seasonYear} Season Stats`; // Update link text
+                statsLink.style.display = 'inline-block'; // Show the link
+            } else {
+                statsLink.style.display = 'none'; // Hide link if info is missing
+                console.error("Could not find abbreviation or season for:", winningTeam);
+            }
+
+            resultDiv.style.backgroundColor = "#e8f5e9"; // Light green for success background
+
+            isSpinning = false;
+            spinButton.disabled = false;
+        }
+
+
+        // --- Initialization ---
+        drawWheel(); // Draw initial wheel state
+        spinButton.addEventListener('click', spinWheel);
+
+    </script>
+
+</body>
+</html>
